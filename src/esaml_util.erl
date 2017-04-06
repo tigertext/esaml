@@ -188,7 +188,7 @@ load_metadata(Url) ->
     case ets:lookup(esaml_idp_meta_cache, Url) of
         [{Url, Meta}] -> Meta;
         _ ->
-            {ok, {{_Ver, 200, _}, _Headers, Body}} = httpc:request(get, {Url, []}, [{autoredirect, true}, {timeout, 3000}], []),
+            {ok, {{_Ver, 200, _}, _Headers, Body}} = httpc:request(get, {Url, []}, [{autoredirect, true}, {timeout, 30000}], []),
             {Xml, _} = xmerl_scan:string(Body, [{namespace_conformant, true}]),
             {ok, Meta = #esaml_idp_metadata{}} = esaml:decode_idp_metadata(Xml),
             ets:insert(esaml_idp_meta_cache, {Url, Meta}),

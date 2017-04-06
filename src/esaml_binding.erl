@@ -57,6 +57,7 @@ decode_response(_, SAMLResponse) ->
 encode_http_redirect(IdpTarget, SignedXml, RelayState) ->
     Type = xml_payload_type(SignedXml),
 	Req = lists:flatten(xmerl:export([SignedXml], xmerl_xml)),
+    ct:pal("xml is ~p ~n", [Req]),
     Param = http_uri:encode(base64:encode_to_string(zlib:zip(Req))),
     RelayStateEsc = http_uri:encode(binary_to_list(RelayState)),
     FirstParamDelimiter = case lists:member($?, IdpTarget) of true -> "&"; false -> "?" end,

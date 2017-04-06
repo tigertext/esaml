@@ -45,6 +45,7 @@
 	issue_instant = "" :: esaml:datetime(),
 	destination = "" :: string(),
 	issuer = "" :: string(),
+	email = "" :: string(),
 	consumer_location = "" :: string()}).
 
 -record(esaml_subject, {
