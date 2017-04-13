@@ -39,6 +39,7 @@ generate_authn_request(IdpURL, SP = #esaml_sp{metadata_uri = MetaURI, consume_ur
     Xml = esaml:to_xml(#esaml_authnreq{issue_instant = Stamp,
                                        destination = IdpURL,
                                        issuer = MetaURI,
+                                       email = "anders@tigertextdemo.com",
                                        consumer_location = ConsumeURI}),
     if SP#esaml_sp.sp_sign_requests ->
         xmerl_dsig:sign(Xml, SP#esaml_sp.key, SP#esaml_sp.certificate);
