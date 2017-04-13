@@ -172,7 +172,7 @@ load_metadata(Url, FPs) ->
         [{Url, Meta}] -> Meta;
         _ ->
             {ok, {{_Ver, 200, _}, _Headers, Body}} = httpc:request(get, {Url, []}, [{autoredirect, true}, {timeout, 3000}], []),
-            {Xml, _} = xmerl_scan:string(Body, [{namespace_conformant, true}]),
+            {Xml, _} = xmerl_scan:string(Body, [{namespace_conformant, false}]), 
             case xmerl_dsig:verify(Xml, Fingerprints) of
                 ok -> ok;
                 Err -> error(Err)
