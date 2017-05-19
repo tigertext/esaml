@@ -66,7 +66,7 @@ sign(ElementIn, PrivateKey = #'RSAPrivateKey'{}, CertBin, SigMethod) when is_bin
                 #xmlAttribute{value = LowId} -> {ElementStrip, LowId};
                 _ ->
                     % Anders reported an ID starting with a digit might cause errors in some cases, doesn't hurt to prepend
-                    NewId = "ttsaml-" ++ uuid_drv:uuid_hex(),
+                    NewId = "ttsaml-" ++ uuid:to_string(uuid:uuid1()),
                     Attr = #xmlAttribute{name = 'ID', value = NewId, namespace = #xmlNamespace{}},
                     NewAttrs = [Attr | ElementStrip#xmlElement.attributes],
                     Elem = ElementStrip#xmlElement{attributes = NewAttrs},
