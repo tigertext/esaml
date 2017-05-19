@@ -26,7 +26,7 @@
 add_xml_id(Xml) ->
     Xml#xmlElement{attributes = Xml#xmlElement.attributes ++ [
         #xmlAttribute{name = 'ID',
-            value = "id" ++ uuid_drv:uuid_hex(),
+            value = "id" ++ uuid:to_string(uuid:uuid1()),
             namespace = #xmlNamespace{}}
         ]}.
 
