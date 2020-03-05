@@ -126,7 +126,7 @@ sign(ElementIn, PrivateKey = #'RSAPrivateKey'{}, CertBin, SigMethod) when is_bin
         ]
     }),
 
-    Element#xmlElement{content = [SigElem | Element#xmlElement.content]}.
+    Element#xmlElement{content = Element#xmlElement.content ++ [SigElem]}.
 
 %% @doc Returns the canonical digest of an (optionally signed) element
 %%
