@@ -10,9 +10,9 @@
 -include_lib("esaml/include/esaml.hrl").
 
 -record(state, {sp, idp}).
--export([init/3, handle/2, terminate/3]).
+-export([init/2, handle/2, terminate/3]).
 
-init(_Transport, Req, _Args) ->
+init(Req, _Args) ->
     % Load the certificate and private key for the SP
     PrivKey = esaml_util:load_private_key("test.key"),
     Cert = esaml_util:load_certificate("test.crt"),
@@ -42,13 +42,14 @@ init(_Transport, Req, _Args) ->
     % Rather than copying the IDP's metadata into our code, we'll just fetch it
     % (this call will cache after the first time around, so it will be fast)
     IdpMeta = esaml_util:load_metadata("https://some.idp.com/idp/saml2/idp/metadata.php"),
-
-    {ok, Req, #state{sp = SP, idp = IdpMeta}}.
+    S = #state{sp = SP, idp = IdpMeta},
+    handle(Req, S),
+    {ok, Req, S}.
 
 handle(Req, S = #state{}) ->
-    {Operation, Req2} = cowboy_req:binding(operation, Req),
-    {Method, Req3} = cowboy_req:method(Req2),
-    handle(Method, Operation, Req3, S).
+    Operation = cowboy_req:binding(operation, Req),
+    Method = cowboy_req:method(Req),
+    handle(Method, Operation, Req, S).
 
 % Return our SP metadata as signed XML
 handle(<<"GET">>, <<"metadata">>, Req, S = #state{sp = SP}) ->
@@ -60,11 +61,12 @@ handle(<<"GET">>, <<"metadata">>, Req, S = #state{sp = SP}) ->
 % our IDP
 handle(<<"GET">>, <<"auth">>, Req, S = #state{sp = SP,
         idp = #esaml_idp_metadata{login_location = IDP}}) ->
-    {CookieID, Req2} = cowboy_req:cookie(<<"sp_cookie">>, Req),
+    Cookies = cowboy_req:parse_cookies(Req),
+    CookieID = lists:keyfind(<<"sp_cookie">>, 1, Cookies),
     case CookieID of
         undefined ->
             % no cookie set, send them to the IdP
-            {ok, Req3} = esaml_cowboy:reply_with_authnreq(SP, IDP, <<"foo">>, Req2),
+            {ok, Req3} = esaml_cowboy:reply_with_authnreq(SP, IDP, <<"foo">>, Req),
             {ok, Req3, S};
 
         _ ->
@@ -79,12 +81,12 @@ handle(<<"GET">>, <<"auth">>, Req, S = #state{sp = SP,
                         <p><a href=\"/saml/deauth\">Log out</a></p>
                         </body>
                         </html>", [Uid]),
-                    {ok, Req3} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}], Output, Req2),
+                    Req3 = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}], Output, Req),
                     {ok, Req3, S};
 
                 _ ->
                     % cookie was invalid, send them to the IdP
-                    {ok, Req3} = esaml_cowboy:reply_with_authnreq(SP, IDP, <<"foo">>, Req2),
+                    {ok, Req3} = esaml_cowboy:reply_with_authnreq(SP, IDP, <<"foo">>, Req),
                     {ok, Req3, S}
             end
     end;
@@ -113,29 +115,30 @@ handle(<<"POST">>, <<"consume">>, Req, S = #state{sp = SP}) ->
                 </html>", [Uid, RelayState, Assertion]),
             Req3 = cowboy_req:set_resp_cookie(<<"sp_cookie">>,
                 CookieID, [{path, <<"/">>}], Req2),
-            {ok, Req4} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}], Output, Req3),
+            Req4 = cowboy_req:reply(200, #{<<"Content-Type">> => <<"text/html">>}, Output, Req3),
             {ok, Req4, S};
 
         {error, Reason, Req2} ->
-            {ok, Req3} = cowboy_req:reply(403, [{<<"content-type">>, <<"text/plain">>}],
+            Req3 = cowboy_req:reply(403, #{<<"content-type">> => <<"text/plain">>},
                 ["Access denied, assertion failed validation:\n", io_lib:format("~p\n", [Reason])],
                 Req2),
             {ok, Req3, S}
     end;
 
 handle(<<"GET">>, <<"deauth">>, Req, S = #state{sp = SP, idp = #esaml_idp_metadata{logout_location = IDP}}) ->
-    {CookieID, Req2} = cowboy_req:cookie(<<"sp_cookie">>, Req),
+    Cookies = cowboy_req:parse_cookies(Req),
+    CookieID = lists:keyfind(<<"sp_cookie">>, 1, Cookies),
     case CookieID of
         undefined ->
-            {ok, Req3} = cowboy_req:reply(403, [{<<"content-type">>, <<"text/plain">>}],
-                ["Access denied, can't read your sp_cookie cookie!"], Req2),
+            Req3 = cowboy_req:reply(403, #{<<"content-type">> => <<"text/plain">>},
+                ["Access denied, can't read your sp_cookie cookie!"], Req),
             {ok, Req3, S};
 
         _ ->
             [{CookieID, NameID, _Uid}] = ets:lookup(sp_cookies, CookieID),
             ets:delete(sp_cookies, CookieID),
             ets:delete(sp_nameids, NameID),
-            {ok, Req3} = esaml_cowboy:reply_with_logoutreq(SP, IDP, NameID, Req2),
+            {ok, Req3} = esaml_cowboy:reply_with_logoutreq(SP, IDP, NameID, Req),
             {ok, Req3, S}
     end;
 
@@ -158,17 +161,17 @@ handle(_Method, <<"logout">>, Req, S = #state{sp = SP, idp = #esaml_idp_metadata
                 <pre>\n~p\n</pre>
                 </body>
                 </html>", [LR, RS]),
-            {ok, Req3} = cowboy_req:reply(200, [{<<"content-type">>, <<"text/html">>}], Output, Req2),
+            Req3 = cowboy_req:reply(200, #{<<"content-type">> => <<"text/html">>}, Output, Req2),
             {ok, Req3, S};
 
         {error, Reason, Req2} ->
-            {ok, Req3} = cowboy_req:reply(500, [{<<"content-type">>, <<"text/plain">>}],
+            Req3 = cowboy_req:reply(500, #{<<"content-type">> => <<"text/plain">>},
                 ["Logout failed validation:\n", io_lib:format("~p\n", [Reason])], Req2),
             {ok, Req3, S}
     end;
 
 handle(_, _, Req, S = #state{}) ->
-    {ok, Req2} = cowboy_req:reply(404, [], <<"Not found">>, Req),
+    Req2 = cowboy_req:reply(404, #{}, <<"Not found">>, Req),
     {ok, Req2, S}.
 
 terminate(_Reason, _Req, _State) -> ok.
