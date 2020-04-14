@@ -101,12 +101,12 @@ validate_logout(SP, Req) ->
             RelayState = proplists:get_value(<<"RelayState">>, PostVals, <<>>),
             validate_logout(SP, SAMLEncoding, SAMLResponse, RelayState, Req2);
         <<"GET">> ->
-            {SAMLEncoding, Req2} = utils:qs_val(<<"SAMLEncoding">>, Req),
-            {SAMLResponse, Req2} = case utils:qs_val(<<"SAMLResponse">>, Req2) of
-                {undefined, Req2} -> utils:qs_val(<<"SAMLRequest">>, Req2);
+            {SAMLEncoding, Req2} = qs_val('SAMLEncoding', Req),
+            {SAMLResponse, Req2} = case qs_val('SAMLResponse', Req2) of
+                {undefined, Req2} -> qs_val('SAMLRequest', Req2);
                 Other -> Other
             end,
-            RelayState = case utils:qs_val(<<"RelayState">>, Req2) of
+            RelayState = case qs_val('RelayState', Req2) of
                 {undefined, Req2} -> <<>>;
                 {B, Req2} -> B
             end,
@@ -196,6 +196,14 @@ perform_extra_security_if_applicable(Callback,   Callback_State,  Xml, Assertion
     case Callback(Xml, Assertion, Callback_State) of
         ok          -> {ok, Assertion, RelayState, Req};
         {error, E}  -> {error, E, Req}
+    end.
+
+qs_val(Key, Req) when is_atom(Key) ->
+    try
+        Map = cowboy_req:match_qs([Key], Req),
+        {maps:get(Key, Map), Req}
+    catch _:_ ->
+        {undefined, Req}
     end.
 
 -ifdef(TEST).
