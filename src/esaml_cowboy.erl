@@ -94,7 +94,7 @@ validate_logout(SP, Req) ->
     Method = cowboy_req:method(Req),
     case Method of
         <<"POST">> ->
-            {ok, PostVals, Req2} = cowboy_req:read_urlencoded_body(Req, #{length => 120000}),
+            {ok, PostVals, Req2} = cowboy_req:read_urlencoded_body(Req, #{length => 128000}),
             SAMLEncoding = proplists:get_value(<<"SAMLEncoding">>, PostVals),
             SAMLResponse = proplists:get_value(<<"SAMLResponse">>, PostVals,
                 proplists:get_value(<<"SAMLRequest">>, PostVals)),
