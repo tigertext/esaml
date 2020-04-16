@@ -44,7 +44,7 @@ reply_with_authnreq(SP, IDP, RelayState, Req) ->
     Xml_Callback :: undefined | xml_callback_fun(),
     Xml_Callback_State :: undefined | xml_callback_state()) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req, Additional_Query_Params, Xml_Callback, Xml_Callback_State) ->
-    SignedXml = SP:generate_authn_request(IDP),
+    SignedXml = esaml_sp:generate_authn_request(IDP, SP),
     is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
     reply_with_req(IDP, SignedXml, Additional_Query_Params, RelayState, Req).
 
@@ -54,7 +54,7 @@ reply_with_authnreq(SP, IDP, RelayState, Req, Additional_Query_Params, Xml_Callb
 %% wish to log out.
 -spec reply_with_logoutreq(esaml:sp(), IdPSLOEndpoint :: uri(), NameID :: string(), Req) -> {ok, Req}.
 reply_with_logoutreq(SP, IDP, NameID, Req) ->
-    SignedXml = SP:generate_logout_request(IDP, NameID),
+    SignedXml = esaml_sp:generate_logout_request(IDP, NameID, SP),
     reply_with_req(IDP, SignedXml, [], <<>>, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutResponse payload
@@ -63,7 +63,7 @@ reply_with_logoutreq(SP, IDP, NameID, Req) ->
 %% received to allow the IdP to keep state.
 -spec reply_with_logoutresp(esaml:sp(), IdPSLOEndpoint :: uri(), esaml:status_code(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_logoutresp(SP, IDP, Status, RelayState, Req) ->
-    SignedXml = SP:generate_logout_response(IDP, Status),
+    SignedXml = esaml_sp:generate_logout_response(IDP, Status, SP),
     reply_with_req(IDP, SignedXml, [], RelayState, Req).
 
 %% @private
@@ -123,12 +123,12 @@ validate_logout(SP, SAMLEncoding, SAMLResponse, RelayState, Req2) ->
                   {"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'}],
             case xmerl_xpath:string("/samlp:LogoutRequest", Xml, [{namespace, Ns}]) of
                 [#xmlElement{}] ->
-                    case SP:validate_logout_request(Xml) of
+                    case esaml_sp:validate_logout_request(Xml, SP) of
                         {ok, Reqq} -> {request, Reqq, RelayState, Req2};
                         Err -> Err
                     end;
                 _ ->
-                    case SP:validate_logout_response(Xml) of
+                    case esaml_sp:validate_logout_response(Xml, SP) of
                         {ok, Resp} -> {response, Resp, RelayState, Req2};
                         Err -> Err
                     end
@@ -138,7 +138,7 @@ validate_logout(SP, SAMLEncoding, SAMLResponse, RelayState, Req2) ->
 %% @doc Reply to a Cowboy request with a Metadata payload
 -spec reply_with_metadata(esaml:sp(), Req) -> {ok, Req}.
 reply_with_metadata(SP, Req) ->
-    SignedXml = SP:generate_metadata(),
+    SignedXml = esaml_sp:generate_metadata(SP),
     Metadata = xmerl:export([SignedXml], xmerl_xml),
     {ok, cowboy_req:reply(200, #{<<"Content-Type">> => <<"text/xml">>}, Metadata, Req)}.
 
@@ -184,7 +184,7 @@ validate_assertion(SP, DuplicateFun, Custom_Response_Security_Callback, Callback
         {'EXIT', Reason} ->
             {error, {bad_decode, Reason}, Req2};
         Xml ->
-            case SP:validate_assertion(Xml, DuplicateFun) of
+            case esaml_sp:validate_assertion(Xml, DuplicateFun, SP) of
                 {ok, A}     -> perform_extra_security_if_applicable(Custom_Response_Security_Callback, Callback_State, Xml, A, RelayState, Req2);
                 {error, E}  -> {error, E, Req2}
             end
