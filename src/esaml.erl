@@ -442,7 +442,7 @@ to_xml(#esaml_logoutreq{version = V, issue_instant = Time, destination = Dest, i
                       #xmlAttribute{name = 'Reason', value = rev_logout_reason_map(Reason)}],
         content = [
             #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]},
-            #xmlElement{name = 'saml:NameID', content = [#xmlText{value = NameID}]}
+            #xmlElement{name = 'saml:NameID', content = [#xmlText{value = NameID}], attributes = [#xmlAttribute{name = 'Format', value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}]}
         ]
     });
 
