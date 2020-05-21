@@ -90,6 +90,8 @@
 -record(esaml_sp, {
 	org = #esaml_org{} :: esaml:org(),
 	tech = #esaml_contact{} :: esaml:contact(),
+	logout_key :: #'RSAPrivateKey'{} | undefined,
+	logout_certificate :: binary() | undefined,
 	key :: #'RSAPrivateKey'{} | undefined,
 	certificate :: binary() | undefined,
 	cert_chain = [] :: [binary()],
