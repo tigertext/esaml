@@ -57,8 +57,8 @@ generate_logout_request(IdpURL, NameID, SP = #esaml_sp{metadata_uri = MetaURI}) 
                                        issuer = MetaURI,
                                        name = NameID,
                                        reason = user}),
-    if SP#esaml_sp.sp_sign_requests ->
-        xmerl_dsig:sign(Xml, SP#esaml_sp.key, SP#esaml_sp.certificate);
+    if (not(SP#esaml_sp.logout_key == undefined)) ->
+        xmerl_dsig:sign(Xml, SP#esaml_sp.logout_key, SP#esaml_sp.logout_certificate);
     true ->
         add_xml_id(Xml)
     end.
@@ -74,7 +74,7 @@ generate_logout_response(IdpURL, Status, SP = #esaml_sp{metadata_uri = MetaURI})
                                        issuer = MetaURI,
                                        status = Status}),
     if SP#esaml_sp.sp_sign_requests ->
-        xmerl_dsig:sign(Xml, SP#esaml_sp.logout_key, SP#esaml_sp.logout_certificate);
+        xmerl_dsig:sign(Xml, SP#esaml_sp.key, SP#esaml_sp.certificate);
     true ->
         add_xml_id(Xml)
     end.
