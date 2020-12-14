@@ -466,13 +466,113 @@ to_xml(#esaml_logoutresp{version = V, issue_instant  = Time,
     });
 
 to_xml(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisplayName,
-                                           url = OrgUrl },
-                       tech = #esaml_contact{name = TechName, email = TechEmail},
+                                           url = OrgUrl } = Org,
+                       tech = #esaml_contact{name = TechName, email = TechEmail} = Tech,
                        signed_requests = SignReq, signed_assertions = SignAss,
                        certificate = CertBin, cert_chain = CertChain, entity_id = EntityID,
                        consumer_location = ConsumerLoc,
                        logout_location = SLOLoc
                        }) ->
+    case SLOLoc of 
+        "https://uat-saml-lb.tigertext.me/v1/organization/3fqA7dcfYeelYKtOqo8oEbIo/saml/logout" -> to_xml_test(Org, Tech, SignReq, SignAss, CertBin, CertChain, EntityID, ConsumerLoc, SLOLoc);
+        _ -> to_xml_internal(Org, Tech, SignReq, SignAss, CertBin, CertChain, EntityID, ConsumerLoc, SLOLoc)
+    end;
+to_xml(_) -> error("unknown record").
+
+to_xml_test(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisplayName,
+                                           url = OrgUrl } = Org,
+                       tech = #esaml_contact{name = TechName, email = TechEmail} = Tech,
+                       signed_requests = SignReq, signed_assertions = SignAss,
+                       certificate = CertBin, cert_chain = CertChain, entity_id = EntityID,
+                       consumer_location = ConsumerLoc,
+                       logout_location = SLOLoc
+                       }) ->  
+    Ns = #xmlNamespace{nodes = [{"md", 'urn:oasis:names:tc:SAML:2.0:metadata'},
+                                {"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'},
+                                {"dsig", 'http://www.w3.org/2000/09/xmldsig#'}]},
+
+    MdOrg = #xmlElement{name = 'md:Organization',
+        content =
+            lang_elems(#xmlElement{name = 'md:OrganizationName'}, OrgName) ++
+            lang_elems(#xmlElement{name = 'md:OrganizationDisplayName'}, OrgDisplayName) ++
+            lang_elems(#xmlElement{name = 'md:OrganizationURL'}, OrgUrl)
+    },
+
+    MdContact = #xmlElement{name = 'md:ContactPerson',
+        attributes = [#xmlAttribute{name = 'contactType', value = "technical"}],
+        content = [
+            #xmlElement{name = 'md:SurName', content = [#xmlText{value = TechName}]},
+            #xmlElement{name = 'md:EmailAddress', content = [#xmlText{value = TechEmail}]}
+        ]
+    },
+
+    KeyDesc = case CertBin of
+        undefined -> [];
+        C when is_binary(C) ->
+            [#xmlElement{name = 'md:KeyDescriptor',
+                attributes = [#xmlAttribute{name = 'use', value = "signing"}],
+                content = [#xmlElement{name = 'dsig:KeyInfo',
+                    content = [#xmlElement{name = 'dsig:X509Data',
+                        content =
+                                [#xmlElement{name = 'dsig:X509Certificate',
+                            content = [#xmlText{value = base64:encode_to_string(CertBin)}]} | 
+                                [#xmlElement{name = 'dsig:X509Certificate',
+                            content = [#xmlText{value = base64:encode_to_string(CertChainBin)}]} || CertChainBin <- CertChain]]}]}]}]
+    end,
+
+    SpSso0 = #xmlElement{name = 'md:SPSSODescriptor',
+        attributes = [#xmlAttribute{name = 'protocolSupportEnumeration', value = "urn:oasis:names:tc:SAML:2.0:protocol"},
+                      #xmlAttribute{name = 'AuthnRequestsSigned', value = atom_to_list(SignReq)},
+                      #xmlAttribute{name = 'WantAssertionsSigned', value = atom_to_list(SignAss)}],
+        content = KeyDesc ++ [
+            #xmlElement{name = 'md:AssertionConsumerService',
+                attributes = [#xmlAttribute{name = 'isDefault', value = "true"},
+                              #xmlAttribute{name = 'index', value = "0"},
+                              #xmlAttribute{name = 'Binding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"},
+                    #xmlAttribute{name = 'Location', value = ConsumerLoc}
+                ]}
+        ]},
+
+    SpSso = case SLOLoc of
+        undefined -> SpSso0;
+        _ ->
+                SpSso0#xmlElement{
+                    content = [
+                #xmlElement{name = 'md:SingleLogoutService',
+                            attributes = [
+                                  #xmlAttribute{name = 'Binding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-REDIRECT"},
+                                  #xmlAttribute{name = 'Location', value = "https://ec2amaz-jujmmqj.tigerconnect.com/adfs/ls/"}]},
+                #xmlElement{name = 'md:SingleLogoutService',
+                            attributes = [
+                                  #xmlAttribute{name = 'Binding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"},
+                                #xmlAttribute{name = 'Location', value = "https://ec2amaz-jujmmqj.tigerconnect.com/adfs/ls/"}
+                            ]} | SpSso0#xmlElement.content
+            ]}
+    end,
+
+    esaml_util:build_nsinfo(Ns, #xmlElement{
+        name = 'md:EntityDescriptor',
+        attributes = [
+            #xmlAttribute{name = 'xmlns:md', value = atom_to_list(proplists:get_value("md", Ns#xmlNamespace.nodes))},
+            #xmlAttribute{name = 'xmlns:saml', value = atom_to_list(proplists:get_value("saml", Ns#xmlNamespace.nodes))},
+            #xmlAttribute{name = 'xmlns:dsig', value = atom_to_list(proplists:get_value("dsig", Ns#xmlNamespace.nodes))},
+            #xmlAttribute{name = 'entityID', value = EntityID}
+        ], content = [
+            SpSso,
+            MdOrg,
+            MdContact
+        ]
+    }).
+
+    
+to_xml_internal(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisplayName,
+                                           url = OrgUrl } = Org,
+                       tech = #esaml_contact{name = TechName, email = TechEmail} = Tech,
+                       signed_requests = SignReq, signed_assertions = SignAss,
+                       certificate = CertBin, cert_chain = CertChain, entity_id = EntityID,
+                       consumer_location = ConsumerLoc,
+                       logout_location = SLOLoc
+                       }) ->        
     Ns = #xmlNamespace{nodes = [{"md", 'urn:oasis:names:tc:SAML:2.0:metadata'},
                                 {"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'},
                                 {"dsig", 'http://www.w3.org/2000/09/xmldsig#'}]},
@@ -550,7 +650,7 @@ to_xml(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisp
         ]
     });
 
-to_xml(_) -> error("unknown record").
+to_xml_internal(_) -> error("unknown record").
 
 
 -ifdef(TEST).
