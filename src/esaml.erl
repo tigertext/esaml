@@ -466,22 +466,22 @@ to_xml(#esaml_logoutresp{version = V, issue_instant  = Time,
     });
 
 to_xml(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisplayName,
-                                           url = OrgUrl } = Org,
-                       tech = #esaml_contact{name = TechName, email = TechEmail} = Tech,
+                                           url = OrgUrl },
+                       tech = #esaml_contact{name = TechName, email = TechEmail},
                        signed_requests = SignReq, signed_assertions = SignAss,
                        certificate = CertBin, cert_chain = CertChain, entity_id = EntityID,
                        consumer_location = ConsumerLoc,
                        logout_location = SLOLoc
-                       }) ->
+                       } = Input) ->
     case SLOLoc of 
-        "https://uat-saml-lb.tigertext.me/v1/organization/3fqA7dcfYeelYKtOqo8oEbIo/saml/logout" -> to_xml_test(Org, Tech, SignReq, SignAss, CertBin, CertChain, EntityID, ConsumerLoc, SLOLoc);
-        _ -> to_xml_internal(Org, Tech, SignReq, SignAss, CertBin, CertChain, EntityID, ConsumerLoc, SLOLoc)
+        "https://uat-saml-lb.tigertext.me/v1/organization/3fqA7dcfYeelYKtOqo8oEbIo/saml/logout" -> to_xml_test(Input);
+        _ -> to_xml_internal(Input)
     end;
 to_xml(_) -> error("unknown record").
 
 to_xml_test(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisplayName,
-                                           url = OrgUrl } = Org,
-                       tech = #esaml_contact{name = TechName, email = TechEmail} = Tech,
+                                           url = OrgUrl },
+                       tech = #esaml_contact{name = TechName, email = TechEmail},
                        signed_requests = SignReq, signed_assertions = SignAss,
                        certificate = CertBin, cert_chain = CertChain, entity_id = EntityID,
                        consumer_location = ConsumerLoc,
@@ -566,8 +566,8 @@ to_xml_test(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = Or
 
     
 to_xml_internal(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisplayName,
-                                           url = OrgUrl } = Org,
-                       tech = #esaml_contact{name = TechName, email = TechEmail} = Tech,
+                                           url = OrgUrl },
+                       tech = #esaml_contact{name = TechName, email = TechEmail},
                        signed_requests = SignReq, signed_assertions = SignAss,
                        certificate = CertBin, cert_chain = CertChain, entity_id = EntityID,
                        consumer_location = ConsumerLoc,
