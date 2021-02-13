@@ -96,21 +96,23 @@ needed_ns(#xmlElement{nsinfo = NsInfo, attributes = Attrs}, InclNs) ->
         %[] -> [K || {K,V} <- E#xmlElement.namespace#xmlNamespace.nodes];
         %_ -> NeededNs1
     %end,
-    lists:foldl(fun(Attr, Needed) ->
-        case Attr#xmlAttribute.nsinfo of
-            {"xmlns", Prefix} ->
-                case lists:member(Prefix, InclNs) of
-                    true -> [Prefix | Needed];
-                    _ -> Needed
-                end;
-            {Ns, _Name} ->
-                case lists:member(Ns, Needed) of
-                    true -> Needed;
-                    _ -> [Ns | Needed]
-                end;
-            _ -> Needed
-        end
-    end, NeededNs2, Attrs).
+    All_NS =
+        lists:foldl(fun(Attr, Needed) ->
+            case Attr#xmlAttribute.nsinfo of
+                {"xmlns", Prefix} ->
+                    case lists:member(Prefix, InclNs) of
+                        true -> [Prefix | Needed];
+                        _ -> Needed
+                    end;
+                {Ns, _Name} ->
+                    case lists:member(Ns, Needed) of
+                        true -> Needed;
+                        _ -> [Ns | Needed]
+                    end;
+                _ -> Needed
+            end
+        end, NeededNs2, Attrs),
+    sets:to_list(sets:from_list(All_NS)).
 
 %% @doc Make xml ok to eat, in a non-quoted situation.
 %% @private
