@@ -99,7 +99,7 @@ needed_ns(#xmlElement{nsinfo = NsInfo, attributes = Attrs}, InclNs) ->
     lists:foldl(fun(Attr, Needed) ->
         case Attr#xmlAttribute.nsinfo of
             {"xmlns", Prefix} ->
-                case lists:member(Prefix, InclNs) of
+                case lists:member(Prefix, InclNs) andalso (not lists:member(Prefix, Needed)) of
                     true -> [Prefix | Needed];
                     _ -> Needed
                 end;
