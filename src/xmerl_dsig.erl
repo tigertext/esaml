@@ -179,6 +179,8 @@ verify(Element, Fingerprints) ->
     end,
 
     CanonXml = xmerl_c14n:c14n(strip(Element), false, InclNs),
+    maybe_dump_bytes(CanonXml),
+  
     CanonXmlUtf8 = unicode:characters_to_binary(CanonXml, unicode, utf8),
     CanonSha = crypto:hash(HashFunction, CanonXmlUtf8),
 
@@ -222,6 +224,12 @@ verify(Element, Fingerprints) ->
                 {error, bad_signature}
         end
     end.
+
+maybe_dump_bytes(Bytes) ->
+  case esaml_dump_bytes:get_dump_url() of
+    undefined -> ok;
+    _ -> esaml_dump_bytes:dump(list_to_binary(Bytes))
+  end.
 
 %% @doc Verifies an XML digital signature, trusting any valid certificate.
 %%
