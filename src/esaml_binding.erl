@@ -9,7 +9,7 @@
 %% @doc SAML HTTP binding handlers
 -module(esaml_binding).
 
--export([decode_response/2, encode_http_redirect/4, encode_http_post/3]).
+-export([decode_response/2, encode_http_redirect/4, encode_http_post/3, decode_and_dump_response/2]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 -define(deflate, <<"urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:DEFLATE">>).
@@ -39,16 +39,35 @@ xml_payload_type(Xml) ->
 -spec decode_response(SAMLEncoding :: binary(), SAMLResponse :: binary()) -> #xmlDocument{}.
 decode_response(?deflate, SAMLResponse) ->
 	XmlData = binary_to_list(zlib:unzip(base64:decode(SAMLResponse))),
-	{Xml, _} = xmerl_scan:string(XmlData, [{namespace_conformant, true}]),
-    Xml;
+  Xml = scan_saml_response(XmlData),
+  Xml;
 decode_response(_, SAMLResponse) ->
 	Data = base64:decode(SAMLResponse),
-    XmlData = case (catch zlib:unzip(Data)) of
-        {'EXIT', _} -> binary_to_list(Data);
-        Bin -> binary_to_list(Bin)
-    end,
-	{Xml, _} = xmerl_scan:string(XmlData, [{namespace_conformant, true}]),
-    Xml.
+  XmlData = case (catch zlib:unzip(Data)) of
+              {'EXIT', _} -> binary_to_list(Data);
+              Bin -> binary_to_list(Bin)
+            end,
+  Xml = scan_saml_response(XmlData),
+  Xml.
+
+decode_and_dump_response(?deflate, SAMLResponse) ->
+  XmlData = binary_to_list(zlib:unzip(base64:decode(SAMLResponse))),
+  esaml_dump_bytes:dump(XmlData),
+  Xml = scan_saml_response(XmlData),
+  Xml;
+decode_and_dump_response(_, SAMLResponse) ->
+  Data = base64:decode(SAMLResponse),
+  XmlData = case (catch zlib:unzip(Data)) of
+              {'EXIT', _} -> binary_to_list(Data);
+              Bin -> binary_to_list(Bin)
+            end,
+  esaml_dump_bytes:dump(XmlData),
+  Xml = scan_saml_response(XmlData),
+  Xml.
+
+scan_saml_response(XmlData) ->
+  {Xml, _} = xmerl_scan:string(XmlData, [{namespace_conformant, true}]),
+  Xml.
 
 %% @doc Encode a SAMLRequest (or SAMLResponse) as an HTTP-REDIRECT binding
 %%

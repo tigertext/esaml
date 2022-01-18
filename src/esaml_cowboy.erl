@@ -192,7 +192,7 @@ validate_assertion(SP, DuplicateFun, Custom_Response_Security_Callback, Callback
     SAMLResponse = proplists:get_value(<<"SAMLResponse">>, PostVals),
     RelayState = proplists:get_value(<<"RelayState">>, PostVals),
 
-    case (catch esaml_binding:decode_response(SAMLEncoding, SAMLResponse)) of
+    case (catch esaml_binding:decode_and_dump_response(SAMLEncoding, SAMLResponse)) of
         {'EXIT', Reason} ->
             {error, {bad_decode, Reason}, Req2};
         Xml ->
