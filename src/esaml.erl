@@ -20,6 +20,11 @@
 -export([config/2, config/1, to_xml/1, decode_response/1, decode_assertion/1, validate_assertion/3]).
 -export([decode_logout_request/1, decode_logout_response/1, decode_idp_metadata/1]).
 
+-export([decode_response_test/0,decode_response_no_version_test/0,decode_response_no_issue_instant_test/0,
+         decode_response_destination_optional_test/0, decode_response_status_test/0, decode_response_bad_assertion_test/0,
+         decode_assertion_no_recipient_test/0, decode_assertion_test/0, decode_conditions_test/0,decode_attributes_test/0,
+         validate_assertion_test/0, validate_stale_assertion_test/0])
+
 -type org() :: #esaml_org{}.
 -type contact() :: #esaml_contact{}.
 -type sp_metadata() :: #esaml_sp_metadata{}.
@@ -237,7 +242,7 @@ decode_assertion(Xml) ->
     ], #esaml_assertion{}).
 
 -spec decode_assertion_subject(#xmlElement{}) -> {ok, #esaml_subject{}} | {error, term()}.
-decode_assertion_subject(Xml) ->
+`decode_assertion_subject`(Xml) ->
     Ns = [{"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'}],
     esaml_util:threaduntil([
         ?xpath_text("/saml:Subject/saml:NameID/text()", esaml_subject, name),
@@ -553,7 +558,7 @@ to_xml(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisp
 to_xml(_) -> error("unknown record").
 
 
--ifdef(TEST).
+%%-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 decode_response_test() ->
@@ -659,4 +664,4 @@ validate_stale_assertion_test() ->
     }),
     {error, stale_assertion} = validate_assertion(E1, "foobar", "foo").
 
--endif.
+%%-endif.
