@@ -44,7 +44,7 @@ reply_with_authnreq(SP, IDP, RelayState, Req) ->
     Xml_Callback :: undefined | xml_callback_fun(),
     Xml_Callback_State :: undefined | xml_callback_state()) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req, Additional_Query_Params, Xml_Callback, Xml_Callback_State) ->
-    SignedXml = SP:generate_authn_request(IDP),
+    SignedXml = esaml_sp:generate_authn_request(IDP, SP),
     is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
     reply_with_req(IDP, SignedXml, Additional_Query_Params, RelayState, Req).
 
